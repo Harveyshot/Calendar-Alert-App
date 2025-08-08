@@ -13,7 +13,8 @@
     <p id="auth_status"></p>
     <div id="calendar_events"></div>
 
-    <script src="https://apis.google.com/js/api.js"></script>
-    <script src="./script.js"></script>
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiOnLoad()"></script>
+<script async defer src="https://accounts.google.com/gsi/client" onload="gisOnLoad()"></script>
+<script src="./script.js"></script>
 </body>
 </html>
