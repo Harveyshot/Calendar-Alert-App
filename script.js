@@ -1,5 +1,5 @@
 // Replace with your actual Client ID from the Google Cloud Console
-const CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID'; 
+const CLIENT_ID = '749336460541-2bj8kqis66ksjob3h4v4ouhfudlcrur3.apps.googleusercontent.com'; 
 
 // Your Render server URL (e.g., https://calendar-files.onrender.com)
 const RENDER_SERVER_URL = 'https://calendar-files.onrender.com';
