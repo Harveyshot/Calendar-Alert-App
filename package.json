@@ -1,0 +1,10 @@
+{
+  "name": "calendar-alert-app",
+  "version": "1.0.0",
+  "description": "Calendar app with alerts",
+  "main": "index.html",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {}
+}
