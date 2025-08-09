@@ -1,5 +1,5 @@
 // Replace with your actual Client ID from the Google Cloud Console
-const CLIENT_ID = '749336460541-2bj8kqis66ksjob3h4v4ouhfudlcrur3.apps.googleusercontent.com'; 
+const CLIENT_ID = '749336460541-2bj8kqis66ksjob3h4v4ouhfudlcrur3.apps.googleusercontent.com';
 
 // Your Render server URL (e.g., https://calendar-files.onrender.com)
 const RENDER_SERVER_URL = 'https://calendar-files.onrender.com';
@@ -10,33 +10,22 @@ const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/calendar/v
 // Authorization scopes required by the API
 const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
 
-let gapiLoaded = false;
-let gisLoaded = false;
-
-function gapiOnLoad() {
-    gapiLoaded = true;
-    handleClientLoad();
-}
-
-function gisOnLoad() {
-    gisLoaded = true;
-    handleClientLoad();
-}
-
 function handleClientLoad() {
-    if (gapiLoaded && gisLoaded) {
-        gapi.client.init({
-            'apiKey': null, // No API key needed for OAuth 2.0
-            'discoveryDocs': DISCOVERY_DOCS,
-        }).then(function () {
-            gapi.auth2.init({
-                'client_id': CLIENT_ID,
-                'scope': SCOPES,
-            }).then(function () {
-                updateSignInStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
-            });
-        });
-    }
+    gapi.load('client:auth2', initClient);
+}
+
+function initClient() {
+    gapi.client.init({
+        'apiKey': null, // No API key needed for OAuth 2.0
+        'discoveryDocs': DISCOVERY_DOCS,
+        'client_id': CLIENT_ID,
+        'scope': SCOPES,
+    }).then(function () {
+        // Listen for sign-in state changes.
+        gapi.auth2.getAuthInstance().isSignedIn.listen(updateSignInStatus);
+        // Handle the initial sign-in state.
+        updateSignInStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+    });
 }
 
 function updateSignInStatus(isSignedIn) {
@@ -89,10 +78,7 @@ async function listUpcomingEvents() {
                 eventElement.innerText = `${start} - ${event.summary}`;
                 calendarEventsDiv.appendChild(eventElement);
 
-                // Check if the event is a reminder event
                 const timeUntilEvent = new Date(start).getTime() - new Date().getTime();
-
-                // You can adjust this to set a different alert time (e.g., 15 minutes)
                 const reminderTime = 60 * 1000; // 1 minute for testing purposes
 
                 if (timeUntilEvent > 0 && timeUntilEvent <= reminderTime) {
@@ -115,7 +101,7 @@ async function sendEmailAlert(event) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                to: 'USER_EMAIL_ADDRESS', // You'll need to dynamically get this from a form or an extended property
+                to: 'USER_EMAIL_ADDRESS',
                 subject: `Calendar Alert: ${event.summary}`,
                 body: `This is a reminder for your event: ${event.summary} starting at ${event.start.dateTime || event.start.date}.`
             })
@@ -128,8 +114,38 @@ async function sendEmailAlert(event) {
     }
 }
 
-// Add listeners to the buttons after the DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('authorize_button').onclick = handleAuthClick;
     document.getElementById('signout_button').onclick = handleSignoutClick;
 });
+What was changed?
+Consolidated Loading: I removed the gisLoaded and gapiLoaded boolean flags. Instead, the handleClientLoad function now directly loads the gapi library with gapi.load('client:auth2', initClient);. This is the standard, reliable way to load gapi and its authentication module.
+
+Combined Initialization: The initClient function now handles the entire initialization process for the older gapi.client and gapi.auth2 libraries in a single, clean block. This eliminates the race condition that was causing the TypeError.
+
+Removed gis logic: All references to the newer gis library have been removed to prevent conflicts.
+
+You will also need to update your index.html file to reflect these changes.
+
+Corrected index.html
+HTML
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendar Alerts</title>
+    <link rel="stylesheet" href="./style.css">
+    <script async defer src="https://apis.google.com/js/api.js" onload="handleClientLoad()"></script>
+</head>
+<body>
+    <h1>Calendar Alerts</h1>
+    <button id="authorize_button" style="display: none;">Authorize</button>
+    <button id="signout_button" style="display: none;">Sign Out</button>
+    <p id="auth_status"></p>
+    <div id="calendar_events"></div>
+
+    <script src="./script.js"></script>
+</body>
+</html>
