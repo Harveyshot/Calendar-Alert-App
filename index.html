@@ -1,22 +1,1028 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<link rel="icon" href="/favicon.ico" sizes="any">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calendar Alerts</title>
-    <link rel="icon" type="image/x-icon" href="/favicon.ico?v=2">
-    <link rel="icon" type="image/png" href="/favicon.png?v=2">
-    <link rel="stylesheet" href="./style.css">
-</head>
-<body>
-    <h1>Calendar Alerts</h1>
-    <button id="authorize_button" style="display: none;">Authorize</button>
-    <button id="signout_button" style="display: none;">Sign Out</button>
-    <p id="auth_status"></p>
-    <div id="calendar_events"></div>
+    <title>Phil's Custom Calendar</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+    /* --- Your Original Base Colors (The Default Theme) --- */
+    /* --- Lavender/Gray Default Theme --- */
+body {
+    background-color: #f3f4f6;  /* gray-100 */
+    color: #1f2937;             /* gray-800 */
+}
+.container {
+    background-color: #f9fafb;  /* gray-50 */
+}
 
-    <script async defer src="https://apis.google.com/js/api.js"></script>
-    <script async defer src="https://accounts.google.com/gsi/client"></script>
-    <script src="./script.js"></script>
+.day-cell.current-month {
+    background-color: #e9d5ff;  /* lavender-300 */
+    color: #1f2937;
+}
+.day-cell.current-month:hover {
+    background-color: #ddd6fe;  /* lavender-200 */
+}
+
+.day-cell.other-month {
+    background-color: #f9fafb;
+    color: #9ca3af;             /* gray-400 */
+}
+
+.today {
+    border: 2px solid #a78bfa;  /* lavender-500 */
+    background-color: #ede9fe;  /* lavender-100 */
+}
+
+#addEventButton {
+    background-color: #a78bfa;  /* lavender-500 */
+    color: #ffffff;
+}
+#addEventButton:hover {
+    background-color: #8b5cf6;  /* lavender-600 */
+}
+
+    /* Base styles for day cells and events that don't change with the theme */
+    .day-cell {
+        height: 100px;
+        position: relative;
+        cursor: pointer;
+    }
+    .day-cell.current-month:hover { transform: scale(1.02); transition: transform 0.2s; }
+    .day-number { font-weight: bold; font-size: 1.25rem; }
+    .event-item {
+        color: white;
+        font-size: 0.75rem;
+        padding: 2px 4px;
+        border-radius: 4px;
+        margin-top: 2px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        cursor: pointer;
+    }
+    .national-holiday { background-color: #60a5fa !important; font-style: italic; }
+    .modal-overlay { background-color: rgba(0, 0, 0, 0.5); }
+    .hidden { display: none; }
+    
+    /* --- Your Color Schemes (These will override the base colors) --- */
+    .theme-dark { background-color: #2d3748 !important; color: #e2e8f0 !important; }
+    .theme-dark .container { background-color: #4a5568 !important; }
+    .theme-dark .day-cell.current-month { background-color: #2d3748 !important; color: #e2e8f0 !important; }
+    .theme-dark .day-cell.other-month { background-color: #4a5568 !important; color: #a0aec0 !important; }
+    .theme-dark .text-gray-700, .theme-dark .text-gray-800, .theme-dark label { color: #e2e8f0 !important; }
+    .theme-dark .border-gray-200, .theme-dark .border-gray-300 { border-color: #718096 !important; }
+    .theme-dark .day-cell.current-month:hover { background-color: #6a768e !important; }
+    .theme-dark input, .theme-dark select, .theme-dark textarea { background-color: #6a768e !important; color: #e2e8f0 !important; }
+    .theme-dark input::placeholder { color: #a0aec0 !important; }
+
+    /* Blue Sky Theme */
+    .theme-blue .container { background-color: #ffffff; }
+    .theme-blue .day-cell.current-month { background-color: #dbeafe; }
+    .theme-blue .day-cell.other-month { background-color: #ffffff; color: #60a5fa; }
+    .theme-blue .text-gray-700, .theme-blue .text-gray-800, .theme-blue label { color: #1e3a8a; }
+    .theme-blue .border-gray-200, .theme-blue .border-gray-300 { border-color: #93c5fd; }
+    .theme-blue .day-cell.current-month:hover { background-color: #eef2ff; }
+
+    /* Forest Green Theme */
+    .theme-green .container { background-color: #ffffff; }
+    .theme-green .day-cell.current-month { background-color: #d1fae5; }
+    .theme-green .day-cell.other-month { background-color: #ffffff; color: #10b981; }
+    .theme-green .text-gray-700, .theme-green .text-gray-800, .theme-green label { color: #065f46; }
+    .theme-green .border-gray-200, .theme-green .border-gray-300 { border-color: #6ee7b7; }
+    .theme-green .day-cell.current-month:hover { background-color: #ecfdf5; }
+
+    /* Pink Theme */
+    .theme-pink .container { background-color: #ffffff; }
+    .theme-pink .day-cell.current-month { background-color: #fdf2f8; }
+    .theme-pink .day-cell.other-month { background-color: #ffffff; color: #e879f9; }
+    .theme-pink .text-gray-700, .theme-pink .text-gray-800, .theme-pink label { color: #c026d3; }
+    .theme-pink .border-gray-200, .theme-pink .border-gray-300 { border-color: #f0abfc; }
+    .theme-pink .day-cell.current-month:hover { background-color: #fce7f3; }
+
+  /* --- Slate Theme (Darker Variant) --- */
+.theme-slate {
+    background-color: #1e293b !important;  /* Page background */
+    color: #e2e8f0 !important;             /* Base text color */
+}
+.theme-slate .container {
+    background-color: #334155 !important;  /* Container background */
+    border-color: #64748b !important;      /* Border */
+    color: #e2e8f0 !important;             /* Container text */
+}
+.theme-slate h1,
+.theme-slate h2 {
+    color: #f1f5f9 !important;             /* Headings */
+}
+.theme-slate #prevMonth,
+.theme-slate #nextMonth {
+    background-color: #475569 !important;
+    color: #f8fafc !important;
+}
+.theme-slate #prevMonth:hover,
+.theme-slate #nextMonth:hover {
+    background-color: #64748b !important;
+}
+.theme-slate #colorScheme {
+    background-color: #334155 !important;
+    color: #e2e8f0 !important;
+    border-color: #64748b !important;
+}
+.theme-slate .day-cell.current-month {
+    background-color: #1e293b !important;
+    color: #e2e8f0 !important;
+}
+.theme-slate .day-cell.current-month:hover {
+    background-color: #334155 !important;
+}
+.theme-slate .day-cell.other-month {
+    background-color: #0f172a !important;
+    color: #94a3b8 !important;
+}
+.theme-slate .today {
+    border-color: #facc15 !important;  /* Highlight today with yellow */
+    background-color: #334155 !important;
+}
+.theme-slate .today {
+    border-color: #64748b !important;
+    background-color: #e2e8f0 !important;
+}
+.theme-slate .today {
+    border-color: #64748b !important;
+    background-color: #e2e8f0 !important;
+}
+/* --- Add New Event Button Theme Styles --- */
+#addEventButton {
+    background-color: #4f46e5;
+    color: #ffffff;
+}
+#addEventButton:hover {
+    background-color: #4338ca;
+}
+
+.theme-dark #addEventButton {
+    background-color: #9ca3af;
+    color: #1f2937;
+}
+.theme-dark #addEventButton:hover {
+    background-color: #d1d5db;
+}
+
+.theme-blue #addEventButton {
+    background-color: #3b82f6;
+    color: #ffffff;
+}
+.theme-blue #addEventButton:hover {
+    background-color: #2563eb;
+}
+
+.theme-green #addEventButton {
+    background-color: #10b981;
+    color: #ffffff;
+}
+.theme-green #addEventButton:hover {
+    background-color: #059669;
+}
+
+.theme-pink #addEventButton {
+    background-color: #ec4899;
+    color: #ffffff;
+}
+.theme-pink #addEventButton:hover {
+    background-color: #db2777;
+}
+
+.theme-slate #addEventButton {
+    background-color: #475569;
+    color: #f8fafc;
+}
+.theme-slate #addEventButton:hover {
+    background-color: #64748b;
+}
+</style>
+</head>
+
+<body class="bg-gray-100 p-8 font-sans">
+    <div class="container mx-auto p-4 bg-white rounded-lg shadow-xl">
+    <h1 class="text-3xl font-bold mb-4 text-center">Phil's Custom Calendar</h1>
+    <div class="flex items-center justify-between mb-4">
+        <button id="prevMonth" class="bg-gray-200 hover:bg-gray-300 p-2 rounded-full">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        <h2 id="currentMonthYear" class="text-2xl font-bold"></h2>
+        <button id="nextMonth" class="bg-gray-200 hover:bg-gray-300 p-2 rounded-full">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+		
+    </div>
+
+        <div class="flex justify-center my-4">
+            <div class="relative inline-block text-gray-700">
+                <label for="colorScheme" class="mr-2 font-medium">Color Scheme:</label>
+                <select id="colorScheme" class="block appearance-none w-full bg-white border border-gray-300 hover:border-gray-400 px-4 py-2 pr-8 rounded-lg shadow leading-tight focus:outline-none focus:shadow-outline">
+                    <option value="default">Default</option>
+                    <option value="dark">Dark Mode</option>
+                    <option value="blue">Blue Sky</option>
+                    <option value="green">Forest Green</option>
+                    <option value="pink">Pink</option>
+					<option value="slate">Slate</option>
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                    <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-7 text-center font-bold text-gray-700 mb-2">
+            <div>Sun</div>
+            <div>Mon</div>
+            <div>Tue</div>
+            <div>Wed</div>
+            <div>Thu</div>
+            <div>Fri</div>
+            <div>Sat</div>
+        </div>
+
+        <div id="calendarGrid" class="grid grid-cols-7 gap-2">
+            </div>
+
+        <div class="mt-4 text-center">
+            <button id="addEventButton" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
+                <i class="fas fa-plus mr-2"></i>Add New Event
+            </button>
+        </div>
+    </div>
+
+    <div id="eventModal" class="hidden fixed inset-0 z-50 modal-overlay justify-center items-center">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+            <h3 id="modalTitle" class="text-2xl font-bold mb-4">Add Event</h3>
+            <form id="eventForm">
+                <input type="hidden" id="eventId">
+                <div class="mb-4">
+                    <label for="eventTitle" class="block text-sm font-medium text-gray-700">Title</label>
+                    <input type="text" id="eventTitle" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="eventDate" class="block text-sm font-medium text-gray-700">Date</label>
+                        <input type="date" id="eventDate" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required>
+                    </div>
+                    <div>
+                        <label for="eventTime" class="block text-sm font-medium text-gray-700">Time</label>
+                        <input type="time" id="eventTime" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700">Color</label>
+                    <div id="eventColor" class="mt-1 flex flex-wrap gap-2">
+                        <label class="inline-flex items-center">
+                            <input type="radio" class="form-radio text-indigo-600" name="eventColor" value="#4f46e5" id="colorIndigo" checked>
+                            <span class="ml-2 w-6 h-6 rounded-full bg-indigo-600"></span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" class="form-radio text-green-500" name="eventColor" value="#22c55e">
+                            <span class="ml-2 w-6 h-6 rounded-full bg-green-500"></span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" class="form-radio text-red-500" name="eventColor" value="#ef4444">
+                            <span class="ml-2 w-6 h-6 rounded-full bg-red-500"></span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" class="form-radio text-yellow-400" name="eventColor" value="#facc15">
+                            <span class="ml-2 w-6 h-6 rounded-full bg-yellow-400"></span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" class="form-radio text-pink-500" name="eventColor" value="#ec4899">
+                            <span class="ml-2 w-6 h-6 rounded-full bg-pink-500"></span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" class="form-radio text-purple-600" name="eventColor" value="#9333ea">
+                            <span class="ml-2 w-6 h-6 rounded-full bg-purple-600"></span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" class="form-radio text-gray-400" name="eventColor" value="#9ca3af">
+                            <span class="ml-2 w-6 h-6 rounded-full bg-gray-400"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label for="eventDescription" class="block text-sm font-medium text-gray-700">Description</label>
+                    <textarea id="eventDescription" rows="2" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"></textarea>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700">Repeat</label>
+                    <div class="mt-1 flex flex-wrap gap-2">
+                        <label class="inline-flex items-center">
+                            <input type="radio" class="form-radio text-indigo-600" name="eventRepeat" value="none" id="repeatNone" checked>
+                            <span class="ml-2">No</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" class="form-radio text-indigo-600" name="eventRepeat" value="daily" id="repeatDaily">
+                            <span class="ml-2">Daily</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" class="form-radio text-indigo-600" name="eventRepeat" value="weekly" id="repeatWeekly">
+                            <span class="ml-2">Weekly</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" class="form-radio text-indigo-600" name="eventRepeat" value="monthly" id="repeatMonthly">
+                            <span class="ml-2">Monthly</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" class="form-radio text-indigo-600" name="eventRepeat" value="annually" id="repeatAnnually">
+                            <span class="ml-2">Annually</span>
+                        </label>
+                    </div>
+                </div>
+                <div id="repeatEndDateGroup" class="mb-4 hidden">
+                    <label for="repeatEndDate" class="block text-sm font-medium text-gray-700">Repeat Until</label>
+                    <input type="date" id="repeatEndDate" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700">Notify Me</label>
+                    <div class="grid grid-cols-2 gap-4 mt-1">
+                        <div>
+                            <label for="notifyBeforeDays" class="block text-sm text-gray-500">Days before</label>
+                            <input type="number" id="notifyBeforeDays" value="0" min="0" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                        </div>
+                        <div>
+                            <label for="notifyBeforeHours" class="block text-sm text-gray-500">Hours before</label>
+                            <input type="number" id="notifyBeforeHours" value="0" min="0" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button type="button" id="deleteEventButton" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 hidden">Delete</button>
+                    <button type="button" id="cancelEventButton" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400">Cancel</button>
+                    <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="reminderModal" class="hidden fixed inset-0 z-50 modal-overlay justify-center items-center">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm" id="reminderModalContent">
+            <h3 class="text-2xl font-bold mb-4">Reminder</h3>
+            <p id="reminderEventTitle" class="text-xl font-semibold mb-2"></p>
+            <p id="reminderEventDateTime" class="text-gray-600 mb-2"></p>
+            <p id="reminderEventDescription" class="text-gray-800 mb-4"></p>
+            <div class="flex flex-col gap-2">
+                <select id="snoozeDuration" class="block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                    <option value="5_minutes">Snooze for 5 minutes</option>
+                    <option value="15_minutes">Snooze for 15 minutes</option>
+                    <option value="30_minutes">Snooze for 30 minutes</option>
+                    <option value="1_hour">Snooze for 1 hour</option>
+                    <option value="2_hours">Snooze for 2 hours</option>
+                    <option value="1_day">Snooze for 1 day</option>
+                </select>
+                <button id="snoozeReminderButton" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">Snooze</button>
+                <button id="dismissReminderButton" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400">Dismiss</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirmationModal" class="hidden fixed inset-0 z-50 modal-overlay justify-center items-center">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm">
+            <h3 class="text-xl font-bold mb-4">Confirm Action</h3>
+            <p id="confirmationMessage" class="text-gray-800 mb-4"></p>
+            <div class="flex justify-end gap-2">
+                <button id="confirmCancelButton" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400">Cancel</button>
+                <button id="confirmOkButton" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+	
+    console.log("Starting calendar script..."); 
+    // --- Constants and State Variables ---
+    const NAGER_DATE_BASE_URL = 'https://date.nager.at/api/v3';
+    const COUNTRY_CODE = 'US';
+
+        let currentMonth = new Date().getMonth();
+        let currentYear = new Date().getFullYear();
+        let events = JSON.parse(localStorage.getItem('calendarEvents')) || [];
+        let holidaysCache = {};
+
+        // --- DOM Elements ---
+        const monthYearDisplay = document.getElementById('currentMonthYear');
+        const calendarGrid = document.getElementById('calendarGrid');
+        const prevMonthBtn = document.getElementById('prevMonth');
+        const nextMonthBtn = document.getElementById('nextMonth');
+        const addEventButton = document.getElementById('addEventButton');
+        const eventModal = document.getElementById('eventModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const eventForm = document.getElementById('eventForm');
+        const eventIdInput = document.getElementById('eventId');
+        const eventTitleInput = document.getElementById('eventTitle');
+        const eventDateInput = document.getElementById('eventDate');
+        const eventTimeInput = document.getElementById('eventTime');
+        const eventColorInput = document.getElementById('eventColor');
+        const eventDescriptionInput = document.getElementById('eventDescription');
+        const deleteEventButton = document.getElementById('deleteEventButton');
+        const cancelEventButton = document.getElementById('cancelEventButton');
+        const repeatNoneRadio = document.getElementById('repeatNone');
+        const repeatDailyRadio = document.getElementById('repeatDaily');
+        const repeatWeeklyRadio = document.getElementById('repeatWeekly');
+        const repeatMonthlyRadio = document.getElementById('repeatMonthly');
+        const repeatAnnuallyRadio = document.getElementById('repeatAnnually');
+        const repeatEndDateGroup = document.getElementById('repeatEndDateGroup');
+        const repeatEndDateInput = document.getElementById('repeatEndDate');
+        const notifyBeforeDaysInput = document.getElementById('notifyBeforeDays');
+        const notifyBeforeHoursInput = document.getElementById('notifyBeforeHours');
+        const reminderModal = document.getElementById('reminderModal');
+        const reminderModalContent = document.getElementById('reminderModalContent');
+        const reminderEventTitle = document.getElementById('reminderEventTitle');
+        const reminderEventDateTime = document.getElementById('reminderEventDateTime');
+        const reminderEventDescription = document.getElementById('reminderEventDescription');
+        const snoozeDurationSelect = document.getElementById('snoozeDuration');
+        const snoozeReminderButton = document.getElementById('snoozeReminderButton');
+        const dismissReminderButton = document.getElementById('dismissReminderButton');
+        const confirmationModal = document.getElementById('confirmationModal');
+        const confirmationMessage = document.getElementById('confirmationMessage');
+        const confirmOkButton = document.getElementById('confirmOkButton');
+        const confirmCancelButton = document.getElementById('confirmCancelButton');
+        let activeReminderEventId = null;
+        let confirmationCallback = null;
+        const colorSchemeSelect = document.getElementById('colorScheme');
+		// --- DIAGNOSTIC CODE ---
+console.log('Found eventModal:', eventModal);
+console.log('Found eventForm:', eventForm);
+console.log('Found reminderModal:', reminderModal);
+console.log('Found confirmationModal:', confirmationModal);
+console.log('Found colorSchemeSelect:', colorSchemeSelect);
+// --- END DIAGNOSTIC CODE ---
+
+        // --- Event Listeners for Recurrence ---
+        document.querySelectorAll('input[name="eventRepeat"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                if (radio.value !== 'none') {
+                    repeatEndDateGroup.classList.remove('hidden');
+                } else {
+                    repeatEndDateGroup.classList.add('hidden');
+                    repeatEndDateInput.value = '';
+                }
+            });
+        });
+
+        // --- Holiday API Function ---
+        async function fetchHolidays(year) {
+            if (holidaysCache[year]) {
+                return holidaysCache[year];
+            }
+            const url = `${NAGER_DATE_BASE_URL}/PublicHolidays/${year}/${COUNTRY_CODE}`;
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    console.error(`Error fetching holidays: ${response.status} ${response.statusText}`);
+                    holidaysCache[year] = [];
+                    return [];
+                }
+                const data = await response.json();
+                const holidays = data.map(holiday => ({
+                    id: `holiday-${holiday.date}-${holiday.name.replace(/\s/g, '-')}`,
+                    title: holiday.name,
+                    date: holiday.date,
+                    time: '',
+                    color: '#60a5fa',
+                    description: `National Holiday in ${COUNTRY_CODE}`,
+                    isHoliday: true,
+                    reminded: false,
+                    snoozeUntil: null
+                }));
+                holidaysCache[year] = holidays;
+                return holidays;
+            } catch (error) {
+                console.error("Network or parsing error fetching holidays:", error);
+                holidaysCache[year] = [];
+                return [];
+            }
+        }
+
+        // --- Recurrence Logic ---
+		/**
+ * Processes a list of events and generates recurring instances for the target month.
+ * @param {Array} baseEvents The original array of events from local storage.
+ * @param {number} year The target year.
+ * @param {number} month The target month (0-11).
+ * @returns {Array} An array of event instances for the given month.
+ */
+function processRecurrence(baseEvents, year, month) {
+    const monthEvents = [];
+    const targetDate = new Date(year, month, 1);
+    const endDate = new Date(year, month + 1, 0);
+
+    for (const event of baseEvents) {
+        let eventDate = new Date(event.date);
+
+        // Add non-recurring events if they fall in the target month
+        if (event.repeat === 'none') {
+            if (eventDate.getFullYear() === year && eventDate.getMonth() === month) {
+                monthEvents.push(event);
+            }
+            continue;
+        }
+
+        // Handle recurring events
+        const eventId = event.id;
+        const baseYear = eventDate.getFullYear();
+        const baseMonth = eventDate.getMonth();
+        const baseDay = eventDate.getDate();
+
+        // Loop to generate recurring instances
+        let currentDate = new Date(eventDate);
+        while (currentDate <= endDate) {
+            if (currentDate.getFullYear() === year && currentDate.getMonth() === month) {
+                const eventCopy = { ...event, id: `${eventId}-${currentDate.getTime()}`, date: currentDate.toISOString().split('T')[0] };
+                monthEvents.push(eventCopy);
+            }
+
+            // Move to the next recurrence
+            let nextDate;
+            switch (event.repeat) {
+                case 'daily':
+                    nextDate = new Date(currentDate.setDate(currentDate.getDate() + 1));
+                    break;
+                case 'weekly':
+                    nextDate = new Date(currentDate.setDate(currentDate.getDate() + 7));
+                    break;
+                case 'monthly':
+                    // Safely add one month without issue of month length
+                    nextDate = new Date(currentDate.setMonth(currentDate.getMonth() + 1));
+                    // Check if the day exists in the next month, otherwise fall back to the last day
+                    if (nextDate.getDate() !== baseDay) {
+                        nextDate = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0);
+                    }
+                    break;
+                case 'annually':
+                    // Safely add one year
+                    nextDate = new Date(currentDate.setFullYear(currentDate.getFullYear() + 1));
+                    break;
+                default:
+                    // Stop if recurrence type is unknown
+                    nextDate = new Date(endDate.getTime() + 1);
+                    break;
+            }
+            currentDate = nextDate;
+        }
+    }
+    return monthEvents;
+}
+		                       ;
+        
+       
+                   
+            ;
+            
+       
+
+        // --- Calendar Rendering Functions ---
+        async function renderCalendar() {
+		console.log("Rendering calendar...");
+            if (!calendarGrid) {
+                console.error("Error: Calendar grid element not found. Please ensure your HTML has an element with id='calendarGrid'.");
+                return;
+            }
+            try {
+                calendarGrid.innerHTML = '';
+                monthYearDisplay.textContent = new Date(currentYear, currentMonth).toLocaleString('en-US', { month: 'long', year: 'numeric' });
+
+                const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
+                const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+                const daysInPrevMonth = new Date(currentYear, currentMonth, 0).getDate();
+                const today = new Date();
+                const todayDate = today.getDate();
+                const todayMonth = today.getMonth();
+                const todayYear = today.getFullYear();
+
+                const storedUserEvents = JSON.parse(localStorage.getItem('calendarEvents')) || [];
+                const holidays = await fetchHolidays(currentYear);
+                const holidaysForMonth = holidays.filter(h => new Date(h.date).getMonth() === currentMonth);
+
+                let combinedEvents = [...storedUserEvents, ...holidaysForMonth];
+                events = storedUserEvents;
+                
+                const eventsToRender = processRecurrence(combinedEvents, currentYear, currentMonth);
+
+                for (let i = firstDayOfMonth - 1; i >= 0; i--) {
+                    const day = daysInPrevMonth - i;
+                    const cell = createDayCell(day, 'other-month');
+                    calendarGrid.appendChild(cell);
+                }
+
+                for (let i = 1; i <= daysInMonth; i++) {
+                    const cell = createDayCell(i, 'current-month');
+                    const fullDate = new Date(currentYear, currentMonth, i);
+                    cell.addEventListener('click', () => {
+                        openEventModal(null, fullDate);
+                    });
+                    if (i === todayDate && currentMonth === todayMonth && currentYear === todayYear) {
+                        cell.classList.add('today');
+                    }
+                    renderEventsForDay(cell, fullDate, eventsToRender);
+                    calendarGrid.appendChild(cell);
+                }
+
+                const totalCells = firstDayOfMonth + daysInMonth;
+                const remainingCells = 42 - totalCells;
+                for (let i = 1; i <= remainingCells; i++) {
+                    const cell = createDayCell(i, 'other-month');
+                    calendarGrid.appendChild(cell);
+                }
+            } catch (error) {
+                console.error("An error occurred during calendar rendering:", error);
+                calendarGrid.innerHTML = `<div class="col-span-7 p-4 text-center text-red-500">Error loading calendar. Please try again or clear your browser cache.</div>`;
+            }
+        }
+
+        function createDayCell(dayNumber, monthClass) {
+            const cell = document.createElement('div');
+            cell.classList.add('day-cell', 'p-2', 'border', 'border-gray-200', 'rounded-md', monthClass);
+            if (monthClass === 'current-month') {
+                cell.classList.add('hover:bg-indigo-50', 'cursor-pointer');
+            }
+            const dayNumberEl = document.createElement('div');
+            dayNumberEl.classList.add('day-number');
+            dayNumberEl.textContent = dayNumber;
+            cell.appendChild(dayNumberEl);
+            const eventsContainer = document.createElement('div');
+            eventsContainer.classList.add('events-container');
+            cell.appendChild(eventsContainer);
+            return cell;
+        }
+
+        function renderEventsForDay(cell, date, eventsData) {
+            const dateString = date.toISOString().split('T')[0];
+            const dayEvents = eventsData.filter(event => event.date === dateString);
+            const eventsContainer = cell.querySelector('.events-container');
+            if (!eventsContainer) return;
+            eventsContainer.innerHTML = '';
+            dayEvents.sort((a, b) => {
+                if (a.isHoliday && !b.isHoliday) return -1;
+                if (!a.isHoliday && b.isHoliday) return 1;
+                if (a.time && b.time) return a.time.localeCompare(b.time);
+                return 0;
+            });
+            dayEvents.forEach(event => {
+                const eventEl = document.createElement('div');
+                eventEl.classList.add('event-item');
+                eventEl.style.backgroundColor = event.color || '#4f46e5';
+                eventEl.textContent = `${event.time ? event.time + ' - ' : ''}${event.title}`;
+                eventEl.title = `${event.title}${event.description ? ': ' + event.description : ''}`;
+                eventEl.dataset.eventId = event.id;
+                if (event.isHoliday) {
+                    eventEl.classList.add('national-holiday');
+                    eventEl.style.cursor = 'default';
+                    eventEl.classList.add('opacity-90');
+                } else {
+                    eventEl.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const originalEvent = events.find(e => e.id === event.originalId || e.id === event.id);
+                        if (originalEvent) openEventModal(originalEvent.id);
+                        else openEventModal(event.id);
+                    });
+                }
+                eventsContainer.appendChild(eventEl);
+            });
+        }
+
+        // --- Event Modal Functions ---
+        function openEventModal(eventId = null, prefillDate = null) {
+            eventForm.reset();
+            deleteEventButton.classList.add('hidden');
+            eventIdInput.value = '';
+            repeatEndDateGroup.classList.add('hidden');
+            if (eventId) {
+                modalTitle.textContent = 'Edit Event';
+                const event = events.find(e => e.id === eventId);
+                if (event) {
+                    if (event.isHoliday) {
+                        alert('National holidays cannot be edited or deleted.');
+                        return;
+                    }
+                    eventIdInput.value = event.id;
+                    eventTitleInput.value = event.title;
+                    eventDateInput.value = event.date;
+                    eventTimeInput.value = event.time || '';
+                    const colorRadio = document.querySelector(`input[name="eventColor"][value="${event.color || '#4f46e5'}"]`);
+                    if (colorRadio) colorRadio.checked = true;
+                    else document.getElementById('colorIndigo').checked = true;
+                    eventDescriptionInput.value = event.description || '';
+                    notifyBeforeDaysInput.value = event.notifyBeforeDays || 0;
+                    notifyBeforeHoursInput.value = event.notifyBeforeHours || 0;
+                    const repeatType = event.repeat || 'none';
+                    const repeatRadio = document.querySelector(`input[name="eventRepeat"][value="${repeatType}"]`);
+                    if (repeatRadio) repeatRadio.checked = true;
+                    else repeatNoneRadio.checked = true;
+                    if (repeatType !== 'none') {
+                        repeatEndDateGroup.classList.remove('hidden');
+                        repeatEndDateInput.value = event.repeatEndDate || '';
+                    } else {
+                        repeatEndDateInput.value = '';
+                    }
+                    deleteEventButton.classList.remove('hidden');
+                }
+            } else {
+                modalTitle.textContent = 'Add Event';
+                if (prefillDate) eventDateInput.value = prefillDate.toISOString().split('T')[0];
+                else eventDateInput.value = new Date().toISOString().split('T')[0];
+                eventTimeInput.value = '';
+                eventDescriptionInput.value = '';
+                repeatNoneRadio.checked = true;
+                repeatEndDateInput.value = '';
+                document.getElementById('colorIndigo').checked = true;
+                notifyBeforeDaysInput.value = 0;
+                notifyBeforeHoursInput.value = 0;
+            }
+            eventModal.classList.remove('hidden');
+            eventModal.classList.add('flex');
+        }
+
+        function closeEventModal() {
+            eventModal.classList.add('hidden');
+            eventModal.classList.remove('flex');
+        }
+
+        function saveEvent(e) {
+            e.preventDefault();
+            const id = eventIdInput.value || crypto.randomUUID();
+            const title = eventTitleInput.value.trim();
+            const date = eventDateInput.value;
+            const time = eventTimeInput.value;
+            const selectedColorRadio = document.querySelector('input[name="eventColor"]:checked');
+            const color = selectedColorRadio ? selectedColorRadio.value : '#4f46e5';
+            const description = eventDescriptionInput.value.trim();
+            const notifyBeforeDays = parseInt(notifyBeforeDaysInput.value);
+            const notifyBeforeHours = parseInt(notifyBeforeHoursInput.value);
+            const selectedRepeatRadio = document.querySelector('input[name="eventRepeat"]:checked');
+            const repeat = selectedRepeatRadio ? selectedRepeatRadio.value : 'none';
+            const repeatEndDate = (repeat !== 'none' && repeatEndDateInput.value) ? repeatEndDateInput.value : null;
+
+            if (!title || !date) {
+                alert('Event Title and Date are required.');
+                return;
+            }
+            const newEvent = { id, title, date, time, color, description, reminded: false, snoozeUntil: null, isHoliday: false, isGenerated: false, notifyBeforeDays, notifyBeforeHours, repeat, repeatEndDate };
+            const existingEventIndex = events.findIndex(event => event.id === id);
+            if (existingEventIndex > -1) {
+                const oldEvent = events[existingEventIndex];
+                if (oldEvent.isHoliday) {
+                    alert('National holidays cannot be edited.');
+                    closeEventModal();
+                    return;
+                }
+                if (oldEvent.date !== newEvent.date || oldEvent.time !== newEvent.time || oldEvent.notifyBeforeDays !== newEvent.notifyBeforeDays || oldEvent.notifyBeforeHours !== newEvent.notifyBeforeHours || oldEvent.repeat !== newEvent.repeat || oldEvent.repeatEndDate !== newEvent.repeatEndDate) {
+                    newEvent.reminded = false;
+                    newEvent.snoozeUntil = null;
+                } else {
+                    newEvent.reminded = oldEvent.reminded;
+                    newEvent.snoozeUntil = oldEvent.snoozeUntil;
+                }
+                events[existingEventIndex] = newEvent;
+            } else {
+                events.push(newEvent);
+            }
+            localStorage.setItem('calendarEvents', JSON.stringify(events));
+            renderCalendar();
+            closeEventModal();
+        }
+
+        function deleteEvent() {
+            const eventIdToDelete = eventIdInput.value;
+            if (eventIdToDelete) {
+                const eventToDelete = events.find(e => e.id === eventIdToDelete);
+                if (eventToDelete && eventToDelete.isHoliday) {
+                    alert('National holidays cannot be deleted.');
+                    closeEventModal();
+                    return;
+                }
+                showConfirmation('Are you sure you want to delete this event?', () => {
+                    events = events.filter(event => event.id !== eventIdToDelete);
+                    localStorage.setItem('calendarEvents', JSON.stringify(events));
+                    renderCalendar();
+                    closeEventModal();
+                });
+            }
+        }
+
+        // --- Reminder Modal Functions ---
+        function showReminder(event) {
+            activeReminderEventId = event.id;
+            reminderEventTitle.textContent = event.title;
+            const eventDateTime = new Date(`${event.date}T${event.time || '00:00'}`);
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true };
+            let dateTimeString = eventDateTime.toLocaleString('en-US', options);
+            reminderEventDateTime.textContent = dateTimeString;
+            reminderEventDescription.textContent = event.description || 'No description provided.';
+            reminderModalContent.style.backgroundColor = event.color || '#add8e6';
+            reminderModal.classList.remove('hidden');
+            reminderModal.classList.add('flex');
+        }
+
+        function closeReminderModal() {
+            reminderModal.classList.add('hidden');
+            reminderModal.classList.remove('flex');
+            activeReminderEventId = null;
+        }
+
+        function snoozeReminder() {
+            if (!activeReminderEventId) return;
+            const durationValue = snoozeDurationSelect.value;
+            let minutesToAdd = 0;
+            switch (durationValue) {
+                case '5_minutes': minutesToAdd = 5; break;
+                case '15_minutes': minutesToAdd = 15; break;
+                case '30_minutes': minutesToAdd = 30; break;
+                case '1_hour': minutesToAdd = 60; break;
+                case '2_hours': minutesToAdd = 120; break;
+                case '1_day': minutesToAdd = 24 * 60; break;
+            }
+            const snoozeUntil = new Date(new Date().getTime() + minutesToAdd * 60 * 1000);
+            const originalEventId = activeReminderEventId.includes('-recurring-') ? activeReminderEventId.split('-recurring-')[0] : activeReminderEventId;
+            const eventIndex = events.findIndex(e => e.id === originalEventId && !e.isGenerated);
+            if (eventIndex > -1) {
+                events[eventIndex].snoozeUntil = snoozeUntil.toISOString();
+                events[eventIndex].reminded = false;
+                localStorage.setItem('calendarEvents', JSON.stringify(events));
+            }
+            closeReminderModal();
+        }
+
+        function dismissReminder() {
+            if (!activeReminderEventId) return;
+            const originalEventId = activeReminderEventId.includes('-recurring-') ? activeReminderEventId.split('-recurring-')[0] : activeReminderEventId;
+            const eventIndex = events.findIndex(e => e.id === originalEventId && !e.isGenerated);
+            if (eventIndex > -1) {
+                events[eventIndex].reminded = true;
+                events[eventIndex].snoozeUntil = null;
+                localStorage.setItem('calendarEvents', JSON.stringify(events));
+            }
+            closeReminderModal();
+        }
+
+        // --- Reminder Checking Logic ---
+       function checkReminders() {
+    const now = new Date();
+    const storedUserEvents = JSON.parse(localStorage.getItem('calendarEvents')) || [];
+    const eventsToCheck = processRecurrence(storedUserEvents, currentYear, currentMonth);
+    const sortedEvents = [...eventsToCheck].sort((a, b) => {
+        const dateA = new Date(`${a.date}T${a.time || '00:00'}`);
+        const dateB = new Date(`${b.date}T${b.time || '00:00'}`);
+        return dateA.getTime() - dateB.getTime();
+    });
+
+    for (const event of sortedEvents) {
+        if (event.isHoliday) continue;
+        if (!event.time) continue;
+
+        const originalEvent = event.isGenerated
+            ? events.find(e => e.id === event.id.split('-recurring-')[0])
+            : event;
+
+        if (!originalEvent) continue;
+
+        const eventDateTime = new Date(`${event.date}T${event.time}`);
+        const reminderTime = new Date(eventDateTime);
+        reminderTime.setDate(reminderTime.getDate() - (originalEvent.notifyBeforeDays || 0));
+        reminderTime.setHours(reminderTime.getHours() - (originalEvent.notifyBeforeHours || 0));
+
+        if (reminderModal.classList.contains('flex')) return;
+
+        if (originalEvent.snoozeUntil) {
+            const snoozeTime = new Date(originalEvent.snoozeUntil);
+            if (now >= snoozeTime && !originalEvent.reminded) {
+                showReminder(event);
+                sendReminderEmail(event);
+                originalEvent.reminded = true;
+                return;
+            }
+        } else if (!originalEvent.reminded && now >= reminderTime && now < eventDateTime) {
+            showReminder(event);
+            sendReminderEmail(event);
+            originalEvent.reminded = true;
+            return;
+        } else if (!originalEvent.reminded && now >= eventDateTime) {
+            showReminder(event);
+            sendReminderEmail(event);
+            originalEvent.reminded = true;
+            return;
+        }
+    }
+}
+function sendReminderEmail(event) {
+  fetch('/send-email', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      to: 'panddmfg@gmail.com',
+      subject: `Reminder: ${event.title}`,
+      body: `You have an event reminder: ${event.title} on ${event.date} at ${event.time || 'unspecified time'}.`
+    })
+  })
+  .then(res => res.json())  // <--- your original version, totally fine
+  .then(data => console.log('✅ Email sent:', data))
+  .catch(err => console.error('❌ Email failed:', err));
+}
+
+        // --- Custom Confirmation Modal ---
+        function showConfirmation(message, onConfirm) {
+            confirmationMessage.textContent = message;
+            confirmationCallback = onConfirm;
+            confirmationModal.classList.remove('hidden');
+            confirmationModal.classList.add('flex');
+        }
+
+        function closeConfirmationModal() {
+            confirmationModal.classList.add('hidden');
+            confirmationModal.classList.remove('flex');
+            confirmationCallback = null;
+        }
+
+        
+        // --- Color Scheme Management ---
+function applyColorScheme(scheme) {
+    // Remove all existing theme-* classes from body
+    document.body.className = document.body.className
+        .split(' ')
+        .filter(c => !c.startsWith('theme-'))
+        .join(' ');
+
+    // Also remove theme-* class from container if present
+    const container = document.querySelector('.container');
+    if (container) {
+        container.className = container.className
+            .split(' ')
+            .filter(c => !c.startsWith('theme-'))
+            .join(' ');
+    }
+
+    // Only apply new theme class if it's not 'default'
+    if (scheme !== 'default') {
+        const themeClass = `theme-${scheme}`;
+        document.body.classList.add(themeClass);
+        if (container) container.classList.add(themeClass);
+    }
+
+    // Save selection
+    localStorage.setItem('colorScheme', scheme);
+}
+
+        // --- Main Event Listeners ---
+        prevMonthBtn.addEventListener('click', () => {
+    const newDate = new Date(currentYear, currentMonth - 1, 1);
+    currentMonth = newDate.getMonth();
+    currentYear = newDate.getFullYear();
+    renderCalendar();
+});
+
+        nextMonthBtn.addEventListener('click', () => {
+            currentMonth++;
+            if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            }
+            renderCalendar();
+        });
+
+        addEventButton.addEventListener('click', () => openEventModal());
+        eventForm.addEventListener('submit', saveEvent);
+        cancelEventButton.addEventListener('click', closeEventModal);
+        deleteEventButton.addEventListener('click', deleteEvent);
+        dismissReminderButton.addEventListener('click', dismissReminder);
+        snoozeReminderButton.addEventListener('click', snoozeReminder);
+        confirmOkButton.addEventListener('click', () => {
+            if (confirmationCallback) confirmationCallback();
+            closeConfirmationModal();
+        });
+        confirmCancelButton.addEventListener('click', closeConfirmationModal);
+        eventModal.addEventListener('click', (e) => { if (e.target === eventModal) closeEventModal(); });
+        reminderModal.addEventListener('click', (e) => { if (e.target === reminderModal) closeReminderModal(); });
+        confirmationModal.addEventListener('click', (e) => { if (e.target === confirmationModal) closeConfirmationModal(); });
+
+        // --- Color Scheme Listener ---
+        colorSchemeSelect.addEventListener('change', (e) => {
+            applyColorScheme(e.target.value);
+        });
+
+        // --- Initial Load and Reminder Check ---
+        const savedColorScheme = localStorage.getItem('colorScheme');
+        if (savedColorScheme && colorSchemeSelect) {
+            colorSchemeSelect.value = savedColorScheme;
+            applyColorScheme(savedColorScheme);
+        } else {
+            applyColorScheme('default');
+        }
+
+        // Initial render and reminder check on page load
+        (async () => {
+            await renderCalendar();
+            setInterval(checkReminders, 60 * 1000);
+            checkReminders();
+        })();
+    </script>
 </body>
 </html>
