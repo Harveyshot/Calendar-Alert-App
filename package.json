@@ -1,10 +1,14 @@
 {
   "name": "calendar-alert-app",
   "version": "1.0.0",
-  "description": "Calendar app with alerts",
-  "main": "index.html",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {}
+  "private": true,
+  "main": "src/server.js",
+  "scripts": { "start": "node src/server.js" },
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "nodemailer": "^6.9.13",
+    "sqlite3": "^5.1.7"
+  }
 }
