@@ -55,4 +55,30 @@ app.post("/tasks/run", async (req, res) => {
 app.get("/api/ping", (_req, res) => res.json({ ok: true }));
 
 const PORT = process.env.PORT || 3000;
+// Get any due reminders for this email, mark them sent, return them
+app.get("/api/alerts/due", (req, res) => {
+  const email = String(req.query.email || "").trim();
+  if (!email) return res.status(400).json({ error: "email required" });
+
+  const now = Date.now();
+  db.all(
+    "SELECT id, message, due_at FROM reminders WHERE sent = 0 AND email = ? AND due_at <= ? LIMIT 20",
+    [email, now],
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: "db read failed" });
+      if (rows.length === 0) return res.json({ alerts: [] });
+
+      const ids = rows.map(r => r.id);
+      const placeholders = ids.map(() => "?").join(",");
+      db.run(
+        `UPDATE reminders SET sent = 1 WHERE id IN (${placeholders})`,
+        ids,
+        (updateErr) => {
+          if (updateErr) return res.status(500).json({ error: "db update failed" });
+          res.json({ alerts: rows.map(r => ({ message: r.message, dueAt: r.due_at })) });
+        }
+      );
+    }
+  );
+});
 app.listen(PORT, () => console.log("Server listening on", PORT));
