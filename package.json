@@ -1,14 +1,42 @@
 {
-  "name": "calendar-alert-app",
+  "name": "calendar-co",
   "version": "1.0.0",
-  "private": true,
-  "main": "src/server.js",
-  "scripts": { "start": "node src/server.js" },
+  "description": "CalendarCo Desktop App by Phillip Nuckols",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "dist": "electron-builder --publish=never"
+  },
+  "build": {
+    "appId": "com.phillipnuckols.calendarco",
+    "productName": "CalendarCo",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!node_modules/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "icon.icns"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.6.4"
+  },
+  "author": "Phillip Nuckols",
+  "license": "MIT",
   "dependencies": {
-    "body-parser": "^1.20.2",
-    "cors": "^2.8.5",
-    "express": "^4.19.2",
-    "nodemailer": "^6.9.13",
-    "sqlite3": "^5.1.7"
+    "@electron/remote": "^2.1.3"
   }
 }
