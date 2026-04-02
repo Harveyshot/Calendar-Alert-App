@@ -3849,9 +3849,41 @@ closeModal();
   
   for (let day = 1; day <= daysInMonth; day++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const dateObj = new Date(year, month, day);
     
-    // Find ALL events for this day (not just one)
-    const dayEvents = events.filter(e => e.date === dateStr);
+    // Find ALL events for this day INCLUDING recurring occurrences
+    const dayEvents = [];
+    
+    events.forEach(event => {
+      // Check if this is a direct match
+      if (event.date === dateStr) {
+        dayEvents.push(event);
+      } 
+      // Check if this is a recurring event that occurs on this day
+      else if (event.repeat && event.repeat !== 'none') {
+        const eventDate = new Date(event.date + 'T12:00:00');
+        const eventDay = eventDate.getDate();
+        const eventMonth = eventDate.getMonth();
+        const eventYear = eventDate.getFullYear();
+        
+        let shouldShow = false;
+        
+        if (event.repeat === 'daily' && dateObj >= eventDate) {
+          shouldShow = true;
+        } else if (event.repeat === 'weekly' && dateObj >= eventDate) {
+          const daysDiff = Math.floor((dateObj - eventDate) / (1000 * 60 * 60 * 24));
+          shouldShow = daysDiff % 7 === 0;
+        } else if (event.repeat === 'monthly' && dateObj >= eventDate) {
+          shouldShow = day === eventDay;
+        } else if (event.repeat === 'yearly' && dateObj >= eventDate) {
+          shouldShow = day === eventDay && month === eventMonth;
+        }
+        
+        if (shouldShow) {
+          dayEvents.push(event);
+        }
+      }
+    });
     
     // Check if this day is a holiday
     const monthDay = `${month + 1}-${day}`;
@@ -3863,7 +3895,6 @@ closeModal();
     dayDiv.setAttribute('data-date', dateStr);
     
     // Format the date nicely
-    const dateObj = new Date(year, month, day);
     const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
     const monthName = dateObj.toLocaleDateString('en-US', { month: 'short' });
     
@@ -3877,7 +3908,6 @@ closeModal();
         <span class="event-color-pill" style="background-color: #d32f2f;"></span>
         <span class="event-title">${holidayName}</span>
       `;
-      // Holidays aren't editable, so no click handler
       dayDiv.appendChild(holidayDiv);
     }
     
@@ -3901,7 +3931,7 @@ closeModal();
         // Click handler to edit this specific event
         eventDiv.addEventListener('click', (e) => {
           e.stopPropagation();
-          openEventModal(dateObj, event.id);
+          editEventById(event.id);
         });
         
         dayDiv.appendChild(eventDiv);
