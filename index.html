@@ -25,8 +25,8 @@
         .main-container {
             max-width: 900px;
             margin: 20px auto;
-            background: white;
-            border: 3px solid #333;
+            background: #fdeee4;
+            border: 3px solid #1a4f96;
             border-radius: 12px;
             padding: 15px;
 			padding-top: 2px;  /* Reduced top padding */
@@ -167,14 +167,14 @@
             background: white;
         }
 
-        .calendar-container {
-            max-width: 800px;
+         {
+            max-width: 1100px;
             margin: 0 auto;
             background: white;
             border-radius: 6px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             overflow: hidden;
-        }
+        }.calendar-container
 
 
         .calendar-header {
@@ -224,28 +224,32 @@
             font-weight: bold;
         }
 
-        .weekdays {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            background: #f8f9fa;
-        }
+        
 
-        .weekday {
-            padding: 15px;
-            text-align: center;
-            font-weight: bold;
-            border-right: 1px solid #e9ecef;
-        }
+        .weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background: #f8f9fa;
+    gap: 2px;
+    max-width: 100%;
+}
+.weekday {
+    padding: 15px;
+    text-align: center;
+    font-weight: bold;
+}
 
         .weekday:last-child {
             border-right: none;
         }
 
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            min-height: 600px;
-        }
+       .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    min-height: 600px;
+    gap: 2px;
+    max-width: 100%;
+}
 
         .day-cell {
             height: 120px;
@@ -405,7 +409,7 @@
 
 #clear-btn {
     padding: 8px 16px;
-    background: #6c757d;
+    background: var(--primary);
     color: white;
     border: none;
     border-radius: 6px;
@@ -414,11 +418,9 @@
     transition: background 0.3s, transform 0.1s;
     white-space: nowrap;
 }
-
 #clear-btn:hover {
-    background: #5a6268;
+    background: var(--medium);
 }
-
 #clear-btn:active {
     transform: translateY(1px);
 }
@@ -1119,6 +1121,7 @@ body[class^="theme-"] .search-item[data-date]:hover {
         <div class="header">
     <div class="logo">CC</div>
     <h1 class="title">CalendarCo</h1>
+	
 </div>
 
 		<div class="search-controls">
@@ -1679,14 +1682,14 @@ function exportToPDF() {
         const dateStr = d.toISOString().split('T')[0];
         
         // Find events for this date (including repeating events)
-        const dayEvents = events.filter(event => {
-            if (event.date === dateStr) return true;
-            
-            if (event.repeat === 'monthly') {
-                const eventDateParts = event.date.split('-');
-                const eventDate = new Date(eventDateParts[0], eventDateParts[1] - 1, eventDateParts[2]);
-                return d.getDate() === eventDate.getDate() && d >= eventDate;
-            }
+        // Events for this date, with repeat rules
+const dayEvents = events.filter(event => {
+  if (event.date === dateStr) return true;
+
+  if (event.repeat === 'monthly') {
+    const eventDate = new Date(event.date + 'T12:00:00');
+    return cellDate.getDate() === eventDate.getDate() && cellDate >= eventDate;
+  }
             if (event.repeat === 'monthly-weekday') {
     const eventDateParts = event.date.split('-');
     const eventDate = new Date(eventDateParts[0], eventDateParts[1] - 1, eventDateParts[2]);
@@ -2682,7 +2685,12 @@ document.addEventListener('click', (e) => {
 
 
 
-        function generateCalendar() {
+       
+		function generateCalendar() {
+  console.log('Current Year:', currentYear);
+  console.log('Current Month:', currentMonth);
+  console.log('First day:', new Date(currentYear, currentMonth, 1));
+  console.log('getDay():', new Date(currentYear, currentMonth, 1).getDay());
   const grid = document.getElementById('calendar-grid');
   const monthYearEl = document.getElementById('month-year');
 
@@ -2699,13 +2707,15 @@ document.addEventListener('click', (e) => {
   const variableHolidays = computeVariableHolidays(currentYear);
 
   // Build the 6-week (42 day) view
-  const firstDay = new Date(currentYear, currentMonth, 1);
-  const startDate = new Date(firstDay);
-  startDate.setDate(startDate.getDate() - firstDay.getDay());
+const firstDay = new Date(currentYear, currentMonth, 1);
+firstDay.setHours(12, 0, 0, 0);
+const startDate = new Date(currentYear, currentMonth, 1);
+startDate.setHours(12, 0, 0, 0);
+startDate.setDate(1 - firstDay.getDay());
 
   for (let i = 0; i < 42; i++) {
-    const cellDate = new Date(startDate);
-    cellDate.setDate(startDate.getDate() + i);
+   const cellDate = new Date(startDate.getTime() + (i * 24 * 60 * 60 * 1000));
+cellDate.setHours(12, 0, 0, 0); // Force to noon local time
 
     // Day cell
     const dayCell = document.createElement('div');
@@ -2724,7 +2734,10 @@ document.addEventListener('click', (e) => {
     eventsContainer.className = 'events-container';
 
     // ISO date key for this cell
-    const dateStr = cellDate.toISOString().split('T')[0];
+   const year = cellDate.getFullYear();
+const month = String(cellDate.getMonth() + 1).padStart(2, '0');
+const day = String(cellDate.getDate()).padStart(2, '0');
+const dateStr = `${year}-${month}-${day}`;
 
     // --- DnD: make day a drop target (and container too for easier hits)
     dayCell.setAttribute('data-date', dateStr);
@@ -2749,41 +2762,37 @@ document.addEventListener('click', (e) => {
 
     // --- Events for this date, with repeat rules
     const dayEvents = events.filter(event => {
-      if (event.date === dateStr) return true;
-
-      if (event.repeat === 'monthly') {
-        const [y, m, d] = event.date.split('-');
-        const eventDate = new Date(y, m - 1, d);
-        return cellDate.getDate() === eventDate.getDate() && cellDate >= eventDate;
-      }
-if (event.repeat === 'monthly-weekday') {
-    const [y, m, d] = event.date.split('-');
-    const eventDate = new Date(y, m - 1, d);
+  if (event.date === dateStr) return true;
+  
+  if (event.repeat === 'monthly') {
+    const eventDate = new Date(event.date + 'T12:00:00');
+    return cellDate.getDate() === eventDate.getDate() && cellDate >= eventDate;
+  }
+  
+  if (event.repeat === 'monthly-weekday') {
+    const eventDate = new Date(event.date + 'T12:00:00');
     
-    // Only show if event date has passed and same weekday
     if (cellDate < eventDate || cellDate.getDay() !== eventDate.getDay()) return false;
     
-    // Calculate which occurrence this is (1st, 2nd, 3rd, 4th, or last)
     const eventWeekOfMonth = Math.ceil(eventDate.getDate() / 7);
     const cellWeekOfMonth = Math.ceil(cellDate.getDate() / 7);
     
-    // Check if it's the last occurrence of the weekday in the month
     const isEventLastOfMonth = eventDate.getDate() + 7 > new Date(eventDate.getFullYear(), eventDate.getMonth() + 1, 0).getDate();
     const isCellLastOfMonth = cellDate.getDate() + 7 > new Date(cellDate.getFullYear(), cellDate.getMonth() + 1, 0).getDate();
     
     if (isEventLastOfMonth && isCellLastOfMonth) return true;
     return eventWeekOfMonth === cellWeekOfMonth;
-}
-      if (event.repeat === 'yearly') {
-        const [y, m, d] = event.date.split('-');
-        const eventDate = new Date(y, m - 1, d);
-        return cellDate.getDate() === eventDate.getDate() &&
-               cellDate.getMonth() === eventDate.getMonth() &&
-               cellDate >= eventDate;
-      }
-
-      return false;
-    });
+  }
+  
+  if (event.repeat === 'yearly') {
+    const eventDate = new Date(event.date + 'T12:00:00');
+    return cellDate.getDate() === eventDate.getDate() &&
+           cellDate.getMonth() === eventDate.getMonth() &&
+           cellDate >= eventDate;
+  }
+  
+  return false;
+});
 
     dayEvents.forEach(event => {
       const eventStrip = document.createElement('div');
@@ -2823,6 +2832,11 @@ if (event.repeat === 'monthly-weekday') {
     // Assemble
     dayCell.appendChild(dayNumber);
     dayCell.appendChild(eventsContainer);
+	// Right before grid.appendChild(dayCell);
+if (i < 7) {  // Only log first week
+  console.log(`Cell ${i}: ${dateStr}, Day: ${cellDate.getDay()}, Display: ${cellDate.getDate()}`);
+}
+grid.appendChild(dayCell);
     grid.appendChild(dayCell);
   }
 }
