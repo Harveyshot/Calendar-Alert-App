@@ -2305,9 +2305,7 @@ function onDayDragOver(e){
   e.preventDefault();                  // allow drop
   e.currentTarget.classList.add('drag-over');
 }
-function onDayDragLeave(e){
-  e.currentTarget.classList.remove('drag-over');
-}
+
 function onDayDrop(e){
   e.preventDefault();
   const cell = e.currentTarget;
@@ -2687,10 +2685,7 @@ document.addEventListener('click', (e) => {
 
        
 		function generateCalendar() {
-  console.log('Current Year:', currentYear);
-  console.log('Current Month:', currentMonth);
-  console.log('First day:', new Date(currentYear, currentMonth, 1));
-  console.log('getDay():', new Date(currentYear, currentMonth, 1).getDay());
+  
   const grid = document.getElementById('calendar-grid');
   const monthYearEl = document.getElementById('month-year');
 
@@ -2833,9 +2828,7 @@ const dateStr = `${year}-${month}-${day}`;
     dayCell.appendChild(dayNumber);
     dayCell.appendChild(eventsContainer);
 	// Right before grid.appendChild(dayCell);
-if (i < 7) {  // Only log first week
-  console.log(`Cell ${i}: ${dateStr}, Day: ${cellDate.getDay()}, Display: ${cellDate.getDate()}`);
-}
+
 grid.appendChild(dayCell);
     grid.appendChild(dayCell);
   }
