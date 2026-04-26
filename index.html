@@ -72,7 +72,7 @@
         .modal-header h2 { margin: 0; font-size: 18px; }
 
         /* Alert Modal */
-        .alert-modal { position: fixed; top: 100px; left: 100px; transform: none; cursor: move; user-select: none; z-index: 2147483647; background-color: #ff0000; color: white; border: 2px solid black; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); padding: 10px; min-width: 300px; max-width: 400px; pointer-events: auto; }
+        ..alert-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); cursor: move; user-select: none; z-index: 2147483647; background-color: #ff0000; color: white; border: 2px solid black; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); padding: 10px; min-width: 300px; max-width: 400px; pointer-events: auto; }
         .alert-backdrop { display: none !important; }
         .snooze-options { margin: 15px 0; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; }
         .snooze-options input, .snooze-options select { background: rgba(255,255,255,0.9); color: #333; border: 1px solid rgba(255,255,255,0.5); border-radius: 3px; padding: 5px; margin: 5px; pointer-events: auto; }
@@ -1433,9 +1433,11 @@ function saveEventsToStorage() {
 // ==================== ALERTS ====================
 function checkForAlerts() {
     const now = new Date();
+    
     events.forEach((event, eventIndex) => {
         if (event.alerts && event.alerts.length > 0) {
             event.alerts.forEach((alert, alertIndex) => {
+                console.log('Checking alert:', alert.time, 'alerted:', alert.alerted);
                 if (alert.time && !alert.alerted) {
                     const alertTime = new Date(alert.time);
                     if (now >= alertTime) {
@@ -1476,20 +1478,21 @@ function stopTabFlashing() {
         document.title = 'CalendarCo';
     }
 }
-
 function showAlert(event, alertIndex) {
     const alert = event.alerts[alertIndex];
     const alertKey = `${event.id}-${alertIndex}`;
     activeAlerts.push(alertKey);
     startTabFlashing();
-    if ('Notification' in window && Notification.permission === 'granted') {
-        const notification = new Notification('📅 Calendar Alert', {
-            body: `${event.title}\nDate: ${new Date(event.date).toLocaleDateString()}\nAlert: ${alert.value} ${alert.unit} before`,
-            requireInteraction: true, tag: alertKey
-        });
-        notification.onclick = () => { window.focus(); notification.close(); };
+	
+	console.log('showAlert fired, typeof require:', typeof require);
+
+
+    if (typeof require !== 'undefined') {
+        const { ipcRenderer } = require('electron');
+        ipcRenderer.send('show-alert', { event, alertIndex });
+    } else {
+        createInPageAlert(event, alertIndex, alertKey);
     }
-    createInPageAlert(event, alertIndex, alertKey);
 }
 
 function createInPageAlert(event, alertIndex, alertKey) {
@@ -1519,13 +1522,14 @@ function createInPageAlert(event, alertIndex, alertKey) {
             </div>
         </div>`;
     document.body.appendChild(alertModal);
+	alertModal._bringToFront = setInterval(() => { alertModal.style.zIndex = '2147483647'; }, 100)
     makeDraggable(alertModal);
 }
 
 function acceptAlert(eventId, alertIndex) {
     const alertKey = `${eventId}-${alertIndex}`;
     const alertModal = document.getElementById(`alert-${alertKey}`);
-    if (alertModal) alertModal.remove();
+    if (alertModal) { clearInterval(alertModal._bringToFront); alertModal.remove(); }
     activeAlerts = activeAlerts.filter(key => key !== alertKey);
     stopTabFlashing();
 }
@@ -1570,12 +1574,20 @@ function makeDraggable(element) {
         e.preventDefault(); isDragging=true; pos3=e.clientX; pos4=e.clientY;
         document.onmouseup = () => { isDragging=false; document.onmouseup=null; document.onmousemove=null; element.style.cursor='move'; };
         document.onmousemove = function(e) {
-            if (!isDragging) return;
-            e.preventDefault();
-            pos1=pos3-e.clientX; pos2=pos4-e.clientY; pos3=e.clientX; pos4=e.clientY;
-            element.style.top=(element.offsetTop-pos2)+'px'; element.style.left=(element.offsetLeft-pos1)+'px'; element.style.transform='none';
-        };
-        element.style.cursor='grabbing';
+    if (!isDragging) return;
+    e.preventDefault();
+    pos1=pos3-e.clientX; pos2=pos4-e.clientY; pos3=e.clientX; pos4=e.clientY;
+    // Convert from centered transform to explicit top/left on first drag
+    if (element.style.transform !== 'none' && element.style.transform !== '') {
+        const rect = element.getBoundingClientRect();
+        element.style.top = rect.top + 'px';
+        element.style.left = rect.left + 'px';
+        element.style.transform = 'none';
+    }
+    element.style.top=(element.offsetTop-pos2)+'px';
+    element.style.left=(element.offsetLeft-pos1)+'px';
+};
+element.style.cursor='grabbing';
     };
 }
 
@@ -1945,6 +1957,19 @@ window.addEventListener('load', function() {
     setInterval(checkForAlerts, 30000);
     checkForAlerts();
 });
+if (typeof require !== 'undefined') {
+    const { ipcRenderer } = require('electron');
+    ipcRenderer.on('alert-accepted-main', () => {
+        activeAlerts = [];
+        stopTabFlashing();
+    });
+    ipcRenderer.on('alert-snoozed-main', (event, data) => {
+        // snooze is handled by checkForAlerts, just stop flashing for now
+        activeAlerts = [];
+        stopTabFlashing();
+    });
+}
+
 </script>
 </body>
 </html>
