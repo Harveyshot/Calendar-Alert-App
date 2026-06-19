@@ -925,15 +925,12 @@ function getEventsForDate(dateStr) {
             return cellDate.getDate() === ed.getDate() && cellDate >= ed;
         }
         if (ev.repeat === 'monthly-weekday') {
-            const ed = new Date(ev.date + 'T12:00:00');
-            if (cellDate < ed || cellDate.getDay() !== ed.getDay()) return false;
-            const ewm = Math.ceil(ed.getDate() / 7);
-            const cwm = Math.ceil(cellDate.getDate() / 7);
-            const isEvLast = ed.getDate() + 7 > new Date(ed.getFullYear(), ed.getMonth() + 1, 0).getDate();
-            const isCellLast = cellDate.getDate() + 7 > new Date(cellDate.getFullYear(), cellDate.getMonth() + 1, 0).getDate();
-            if (isEvLast && isCellLast) return true;
-            return ewm === cwm;
-        }
+    const ed = new Date(ev.date + 'T12:00:00');
+    if (cellDate < ed || cellDate.getDay() !== ed.getDay()) return false;
+    const ewm = Math.floor((ed.getDate() - 1) / 7) + 1;
+    const cwm = Math.floor((cellDate.getDate() - 1) / 7) + 1;
+    return ewm === cwm;
+}
         if (ev.repeat === 'yearly') {
             const ed = new Date(ev.date + 'T12:00:00');
             return cellDate.getDate() === ed.getDate() && cellDate.getMonth() === ed.getMonth() && cellDate >= ed;
