@@ -1,4 +1,4 @@
-const CACHE_NAME = 'calendarcco-v1';
+const CACHE_NAME = 'calendarcco-v2';
 const urlsToCache = [
   '/Calendar-Alert-App/',
   '/Calendar-Alert-App/index.html',
