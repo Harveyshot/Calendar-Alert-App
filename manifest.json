@@ -1,0 +1,26 @@
+{
+  "name": "CalendarCo",
+  "short_name": "CalendarCo",
+  "description": "A clean, powerful calendar app for Windows and Mac",
+  "id": "com.simpleappsstore.calendarcco",
+  "start_url": "/Calendar-Alert-App/",
+  "display": "standalone",
+  "background_color": "#FEF0E7",
+  "theme_color": "#1B3A6B",
+  "orientation": "portrait",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

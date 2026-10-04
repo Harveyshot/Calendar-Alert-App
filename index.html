@@ -7,6 +7,17 @@
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-180x180.png">
     <link href="https://fonts.googleapis.com/css2?family=Himalaya&display=swap" rel="stylesheet">
+	<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1B3A6B">
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/Calendar-Alert-App/sw.js')
+        .then(reg => console.log('SW registered'))
+        .catch(err => console.log('SW error:', err));
+    });
+  }
+</script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; padding: 0; margin: 0; background: linear-gradient(135deg, #f0f2f5 0%, #e8ebf0 100%); min-height: 100vh; }
@@ -1431,19 +1442,78 @@ function saveEventsToStorage() {
 // ==================== ALERTS ====================
 function checkForAlerts() {
     const now = new Date();
+
     events.forEach((event, eventIndex) => {
-        if (event.alerts && event.alerts.length > 0) {
-            event.alerts.forEach((alert, alertIndex) => {
-                if (alert.time && !alert.alerted) {
-                    const alertTime = new Date(alert.time);
-                    if (now >= alertTime) {
-                        showAlert(event, alertIndex);
-                        events[eventIndex].alerts[alertIndex].alerted = true;
-                        saveEventsToStorage();
-                    }
-                }
-            });
+        if (!event.alerts || event.alerts.length === 0) return;
+
+        // For recurring events, calculate the next upcoming occurrence
+        let eventDateStr = event.date;
+        if (event.repeat === 'yearly') {
+            // Use current year's occurrence
+            const ed = new Date(event.date + 'T12:00:00');
+            const thisYear = new Date(now.getFullYear(), ed.getMonth(), ed.getDate());
+            const nextYear = new Date(now.getFullYear() + 1, ed.getMonth(), ed.getDate());
+            // Use this year's date if it hasn't passed, otherwise next year
+            eventDateStr = toDateStr(thisYear >= new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1) ? thisYear : nextYear);
+        } else if (event.repeat === 'monthly') {
+            // Use current month's occurrence
+            const ed = new Date(event.date + 'T12:00:00');
+            const thisMonth = new Date(now.getFullYear(), now.getMonth(), ed.getDate());
+            const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, ed.getDate());
+            eventDateStr = toDateStr(thisMonth >= new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1) ? thisMonth : nextMonth);
         }
+
+        // Build the event datetime for alert calculation
+        const eventDateTime = event.allDay
+            ? new Date(eventDateStr + 'T00:00:00')
+            : new Date(eventDateStr + 'T' + (event.time || '12:00'));
+
+        event.alerts.forEach((alert, alertIndex) => {
+            if (!alert.time) return;
+
+            // For recurring events, always recalculate the alert time
+            let alertTime;
+            if (event.repeat && event.repeat !== 'none') {
+                alertTime = calculateAlertTime(eventDateTime, alert.value, alert.unit);
+            } else {
+                alertTime = new Date(alert.time);
+            }
+
+            // Check if alert should fire — within a 35 second window to match the interval
+           const alertAlreadyShown = alert.alerted && 
+    new Date(alert.time) > now;
+
+            if (now >= alertTime && !alertAlreadyShown) {
+                // Check we haven't already shown this alert in the past hour
+                const timeSinceAlert = now - alertTime;
+                if (timeSinceAlert < 60 * 60 * 1000) { // within last hour
+                    showAlert(event, alertIndex);
+                    events[eventIndex].alerts[alertIndex].alerted = true;
+                    events[eventIndex].alerts[alertIndex].time = alertTime.toISOString();
+                    saveEventsToStorage();
+                }
+            }
+
+            // Reset alerted flag for next year/month occurrence
+            if (event.repeat === 'yearly' && alert.alerted) {
+                const alertDate = new Date(alert.time);
+                if (alertDate.getFullYear() < now.getFullYear()) {
+                    events[eventIndex].alerts[alertIndex].alerted = false;
+                    events[eventIndex].alerts[alertIndex].time = alertTime.toISOString();
+                    saveEventsToStorage();
+                }
+            }
+            if (event.repeat === 'monthly' && alert.alerted) {
+                const alertDate = new Date(alert.time);
+                const alertMonth = alertDate.getFullYear() * 12 + alertDate.getMonth();
+                const nowMonth = now.getFullYear() * 12 + now.getMonth();
+                if (alertMonth < nowMonth) {
+                    events[eventIndex].alerts[alertIndex].alerted = false;
+                    events[eventIndex].alerts[alertIndex].time = alertTime.toISOString();
+                    saveEventsToStorage();
+                }
+            }
+        });
     });
 }
 
@@ -1528,7 +1598,6 @@ function acceptAlert(eventId, alertIndex) {
     activeAlerts = activeAlerts.filter(key => key !== alertKey);
     stopTabFlashing();
 }
-
 function snoozeAlert(eventId, alertIndex) {
     const alertKey = `${eventId}-${alertIndex}`;
     const snoozeValueEl = document.getElementById(`snooze-value-${alertKey}`);
@@ -1542,8 +1611,8 @@ function snoozeAlert(eventId, alertIndex) {
     const newAlertTime = new Date(Date.now() + snoozeMinutes * 60000);
     const eventIndex = events.findIndex(e => e.id === eventId);
     if (eventIndex !== -1 && events[eventIndex].alerts[alertIndex]) {
-        events[eventIndex].alerts[alertIndex].time = newAlertTime.toISOString();
-        events[eventIndex].alerts[alertIndex].alerted = false;
+        events[eventIndex].alerts[alertIndex].snoozedUntil = newAlertTime.toISOString();
+        events[eventIndex].alerts[alertIndex].alerted = true;
         saveEventsToStorage();
     }
     acceptAlert(eventId, alertIndex);
