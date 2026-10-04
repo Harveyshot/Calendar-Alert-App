@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CalendarCo</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-180x180.png">
     <link href="https://fonts.googleapis.com/css2?family=Himalaya&display=swap" rel="stylesheet">
 	<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1B3A6B">
@@ -24,7 +24,16 @@
         .main-container { max-width: 900px; margin: 20px auto; background: #fdeee4; border: 3px solid #1a4f96; border-radius: 12px; padding: 15px; padding-top: 2px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
         .header { text-align: center; margin-bottom: 5px; padding-top: 5px; }
         .title { font-family: 'Himalaya', serif; font-size: 60px; color: #4285f4; margin-bottom: 2px; margin-top: 0; }
-        .logo { width: 60px; height: 60px; border: 3px solid #4285f4; border-radius: 50%; margin: 0 auto; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; font-family: 'Himalaya', serif; font-size: 34px; font-weight: bold; background: transparent; }
+        .logo {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  margin: 0 auto;
+  margin-bottom: 10px;
+  overflow: hidden;
+  border: none;
+  padding: 0;
+}
         .controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 0 60px; }
         .backup-controls { position: relative; display: inline-block; }
         .file-menu-btn { padding: 8px 20px; background: #4285f4; color: white; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 500; transition: background 0.3s, transform 0.1s; }
@@ -247,7 +256,9 @@
 <body class="theme-default">
 <div class="main-container">
     <div class="header">
-        <div class="logo">CC</div>
+        <div class="logo">
+  <img src="android-chrome-192x192.png" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">
+</div>
         <h1 class="title">CalendarCo</h1>
     </div>
 
