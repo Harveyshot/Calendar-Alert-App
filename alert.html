@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Event Alert</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            background: transparent;
+            height: 100%;
+        }
+
+        body {
+            color: white;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        .alert-content {
+            padding: 20px;
+            background: #ff0000;
+            border-radius: 14px;
+            border: 3px solid #000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            box-sizing: border-box;
+            height: 100%;
+            -webkit-app-region: drag;
+        }
+
+        .alert-content button,
+        .alert-content input,
+        .alert-content select {
+            -webkit-app-region: no-drag;
+        }
+
+        h3 { font-size: 20px; margin-bottom: 12px; border-bottom: 2px solid white; padding-bottom: 10px; }
+        p  { margin: 7px 0; font-size: 14px; }
+        p strong { font-size: 16px; }
+
+        .snooze-options { margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.35); }
+        .snooze-options label { display: block; margin-bottom: 8px; font-weight: bold; }
+
+        .snooze-row { display: flex; gap: 10px; margin-bottom: 14px; }
+        .snooze-row input, .snooze-row select {
+            padding: 8px; font-size: 14px; border: none; border-radius: 4px;
+        }
+        .snooze-row input  { width: 80px; }
+        .snooze-row select { flex: 1; }
+
+        .button-row { display: flex; gap: 10px; }
+
+        button {
+            flex: 1; padding: 12px; font-size: 14px; font-weight: bold;
+            border: none; border-radius: 5px; cursor: pointer; transition: all 0.2s;
+        }
+        .accept-btn { background: #4CAF50; color: white; }
+        .accept-btn:hover { background: #45a049; transform: scale(1.05); }
+        .snooze-btn  { background: #555; color: white; }
+        .snooze-btn:hover  { background: #444; transform: scale(1.05); }
+    </style>
+</head>
+<body>
+    <div class="alert-content">
+        <h3>🔔 Event Alert</h3>
+        <p><strong id="eventTitle"></strong></p>
+        <p>Date: <span id="eventDate"></span></p>
+        <p>Time: <span id="eventTime"></span></p>
+        <p><em id="alertInfo"></em></p>
+
+        <div class="snooze-options">
+            <label>Snooze for:</label>
+            <div class="snooze-row">
+                <input type="number" id="snoozeValue" value="5" min="1">
+                <div id="snoozeUnit" data-unit="minutes" style="display:flex; gap:5px;">
+                    <button type="button" onclick="setUnit(this,'minutes')" style="padding:5px 8px;border:none;border-radius:3px;background:#4285f4;color:white;cursor:pointer;">Min</button>
+                    <button type="button" onclick="setUnit(this,'hours')" style="padding:5px 8px;border:none;border-radius:3px;background:#555;color:white;cursor:pointer;">Hrs</button>
+                    <button type="button" onclick="setUnit(this,'days')" style="padding:5px 8px;border:none;border-radius:3px;background:#555;color:white;cursor:pointer;">Days</button>
+                </div>
+            </div>
+            <div class="button-row">
+                <button class="accept-btn" id="acceptBtn">Accept</button>
+                <button class="snooze-btn"  id="snoozeBtn">Snooze</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+        let currentAlertData = null;
+
+        // Highlights the chosen snooze unit button (Min / Hrs / Days)
+        function setUnit(btn, unit) {
+            document.getElementById('snoozeUnit').dataset.unit = unit;
+            document.querySelectorAll('#snoozeUnit button').forEach(b => b.style.background = '#555');
+            btn.style.background = '#4285f4';
+        }
+
+        // Turns "14:30" into "2:30 PM"
+        function formatTime(time) {
+            if (!time) return '';
+            const parts = time.includes('T') ? time.split('T')[1].substring(0, 5) : time.substring(0, 5);
+            const h = parseInt(parts.split(':')[0]);
+            const m = parts.split(':')[1];
+            return (h % 12 || 12) + ':' + m + ' ' + (h >= 12 ? 'PM' : 'AM');
+        }
+
+        // Event data
+        ipcRenderer.on('event-data', (event, data) => {
+            currentAlertData = data;
+            document.getElementById('eventTitle').textContent = data.event.title;
+            document.getElementById('eventDate').textContent =
+                new Date(data.event.date + 'T12:00:00').toLocaleDateString();
+            document.getElementById('eventTime').textContent =
+                data.event.allDay ? 'All day' : formatTime(data.event.time);
+            const a = data.event.alerts[data.alertIndex];
+            document.getElementById('alertInfo').textContent =
+                'Alert: ' + a.value + ' ' + a.unit + (a.unit === 'At Event Time' ? '' : ' before');
+        });
+
+        // Accept
+        document.getElementById('acceptBtn').addEventListener('click', () => {
+            if (currentAlertData) {
+                ipcRenderer.send('alert-accepted', {
+                    eventId: currentAlertData.event.id,
+                    alertIndex: currentAlertData.alertIndex
+                });
+            }
+            ipcRenderer.send('close-alert-window');
+        });
+
+        // Snooze
+        document.getElementById('snoozeBtn').addEventListener('click', () => {
+            if (currentAlertData) {
+                ipcRenderer.send('alert-snoozed', {
+                    eventId: currentAlertData.event.id,
+                    alertIndex: currentAlertData.alertIndex,
+                    snoozeValue: parseInt(document.getElementById('snoozeValue').value),
+                    snoozeUnit:  document.getElementById('snoozeUnit').dataset.unit
+                });
+            }
+            ipcRenderer.send('close-alert-window');
+        });
+    </script>
+</body>
+</html>
