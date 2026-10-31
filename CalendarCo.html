@@ -1458,6 +1458,22 @@ function checkForAlerts() {
             const thisMonth = new Date(now.getFullYear(), now.getMonth(), ed.getDate());
             const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, ed.getDate());
             eventDateStr = toDateStr(thisMonth >= new Date(now.getFullYear(), now.getMonth(), now.getDate()) ? thisMonth : nextMonth);
+        } else if (event.repeat === 'monthly-weekday') {
+            // Same weekday and week-of-month as the original (e.g. 2nd Tuesday).
+            // Pick this month's occurrence if it hasn't passed, otherwise the next one.
+            const ed = new Date(event.date + 'T12:00:00');
+            const weekNum = Math.floor((ed.getDate() - 1) / 7) + 1;
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            for (let i = 0; i < 13; i++) {
+                const y = now.getFullYear(), m = now.getMonth() + i;
+                const day = nthWeekdayOfMonth(new Date(y, m, 1).getFullYear(), new Date(y, m, 1).getMonth(), ed.getDay(), weekNum);
+                if (!day) continue; // e.g. no 5th Friday this month
+                const occ = new Date(y, m, day);
+                if (occ >= today && occ >= new Date(ed.getFullYear(), ed.getMonth(), ed.getDate())) {
+                    eventDateStr = toDateStr(occ);
+                    break;
+                }
+            }
         }
 
         // Build event datetime using local time
@@ -1488,7 +1504,7 @@ function checkForAlerts() {
                         events[eventIndex].alerts[alertIndex].firedYear = 0;
                         saveEventsToStorage();
                     }
-                } else if (event.repeat === 'monthly') {
+                } else if (event.repeat === 'monthly' || event.repeat === 'monthly-weekday') {
                     const storedMonth = alert.firedMonth || 0;
                     const nowMonth = now.getFullYear() * 12 + now.getMonth();
                     if (storedMonth < nowMonth && alertTime > now) {
@@ -1552,7 +1568,7 @@ function showAlert(event, alertIndex) {
     startTabFlashing(event.title);
     if ('Notification' in window && Notification.permission === 'granted') {
         const notification = new Notification('📅 Calendar Alert', {
-            body: `${event.title}\nDate: ${new Date(event.date).toLocaleDateString()}\nAlert: ${alert.value} ${alert.unit} before`,
+            body: `${event.title}\nDate: ${new Date(event.date + 'T12:00:00').toLocaleDateString()}\nAlert: ${alert.value} ${alert.unit} before`,
             requireInteraction: true, tag: alertKey
         });
         notification.onclick = () => { window.focus(); notification.close(); };
