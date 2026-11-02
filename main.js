@@ -26,6 +26,16 @@ function createWindow() {
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
+    // Bring the window to the front on startup. Windows can otherwise open it
+    // behind other windows (e.g. when launched from the installer). Briefly
+    // making it topmost forces it forward, then we release it right away.
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.setAlwaysOnTop(true);
+    mainWindow.moveTop();
+    mainWindow.focus();
+    setTimeout(() => {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setAlwaysOnTop(false);
+    }, 500);
     if (process.platform === 'darwin') app.dock.show();
   });
 

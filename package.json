@@ -1,6 +1,6 @@
 {
   "name": "calendar-co",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "CalendarCo Desktop App by Phillip Nuckols",
   "main": "main.js",
   "scripts": {
@@ -21,6 +21,15 @@
     "win": {
       "target": "nsis",
       "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "CalendarCo",
+      "runAfterFinish": true
     },
     "mac": {
       "target": "dmg",
