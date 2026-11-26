@@ -1297,22 +1297,25 @@ function openEditModal(ev) {
     document.getElementById('birth-year').value = ev.birthYear || '';
     selectedEventColor = ev.color || '#4285f4';
     updateColorSelection();
+        const timedAlerts = (ev.alerts || []).filter(a => a.unit !== 'At Event Time');
     for (let i = 1; i <= 3; i++) {
         const enabled = document.getElementById(`alert${i}-enabled`);
         const value = document.getElementById(`alert${i}-value`);
         const unit = document.getElementById(`alert${i}-unit`);
-        if (ev.alerts && ev.alerts[i-1]) {
+        if (timedAlerts[i-1]) {
             if (enabled) enabled.checked = true;
-            if (value) value.value = ev.alerts[i-1].value;
-            if (unit) unit.value = ev.alerts[i-1].unit;
+            if (value) value.value = timedAlerts[i-1].value;
+            if (unit) unit.value = timedAlerts[i-1].unit;
         } else {
             if (enabled) enabled.checked = false;
             if (value) value.value = '0';
             if (unit) unit.value = (i===1?'minutes':i===2?'days':'weeks');
         }
     }
+    const atTimeBox = document.getElementById('alert-at-time');
+    if (atTimeBox) atTimeBox.checked = (ev.alerts || []).some(a => a.unit === 'At Event Time');
     editingEventId = ev.id;
-}
+	}
 
 function editEvent(evOrObj) {
     const id = typeof evOrObj === 'string' ? evOrObj : (evOrObj && evOrObj.id);
